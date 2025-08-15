@@ -12,7 +12,55 @@ from .filters import CustomerFilter, ProductFilter, OrderFilter
 from .models import Customer, Product, Order
 
 # -------------------
-# Helpers
+# GraphQL Types
+# -------------------
+class CustomerType(DjangoObjectType):
+    class Meta:
+        model = Customer
+        fields = ("id", "name", "email", "phone")
+
+
+class ProductType(DjangoObjectType):
+    class Meta:
+        model = Product
+        fields = ("id", "name", "price", "stock")
+
+
+class OrderType(DjangoObjectType):
+    class Meta:
+        model = Order
+        fields = ("id", "customer", "products", "total_amount", "order_date")
+
+
+# -------------------
+# Input Types
+# -------------------
+class CustomerInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    email = graphene.String(required=True)
+    phone = graphene.String(required=False)
+
+
+class BulkCustomerInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    email = graphene.String(required=True)
+    phone = graphene.String(required=False)
+
+
+class ProductInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    price = graphene.Float(required=True)
+    stock = graphene.Int(required=False, default_value=0)
+
+
+class OrderInput(graphene.InputObjectType):
+    customer_id = graphene.ID(required=True)
+    product_ids = graphene.List(graphene.ID, required=True)
+    order_date = graphene.DateTime(required=False)
+
+
+# -------------------
+# Helpers / Validation
 # -------------------
 PHONE_RE = re.compile(r"^(\+?\d{7,15}|\d{3}-\d{3}-\d{4})$")
 
@@ -25,73 +73,23 @@ def decimal_from_float(f) -> Decimal:
 
 
 # -------------------
-# GraphQL Types
-# -------------------
-class CustomerType(DjangoObjectType):
-    class Meta:
-        model = Customer
-        fields = ("id", "name", "email", "phone")
-        filterset_class = CustomerFilter
-
-
-class ProductType(DjangoObjectType):
-    class Meta:
-        model = Product
-        fields = ("id", "name", "price", "stock")
-        filterset_class = ProductFilter
-
-
-class OrderType(DjangoObjectType):
-    class Meta:
-        model = Order
-        fields = ("id", "customer", "products", "total_amount", "order_date")
-        filterset_class = OrderFilter
-
-
-# -------------------
-# Input Types
-# -------------------
-class CreateCustomerInput(graphene.InputObjectType):
-    name = graphene.String(required=True)
-    email = graphene.String(required=True)
-    phone = graphene.String(required=False)
-
-class BulkCustomerInput(graphene.InputObjectType):
-    name = graphene.String(required=True)
-    email = graphene.String(required=True)
-    phone = graphene.String(required=False)
-
-class CreateProductInput(graphene.InputObjectType):
-    name = graphene.String(required=True)
-    price = graphene.Float(required=True)  # GraphQL float, converted to Decimal
-    stock = graphene.Int(required=False, default_value=0)
-
-class CreateOrderInput(graphene.InputObjectType):
-    customer_id = graphene.ID(required=True)
-    product_ids = graphene.List(graphene.ID, required=True)
-    order_date = graphene.DateTime(required=False)
-
-
-# -------------------
 # Mutations
 # -------------------
 class CreateCustomer(graphene.Mutation):
     class Arguments:
-        input = CreateCustomerInput(required=True)
+        input = CustomerInput(required=True)
 
     customer = graphene.Field(CustomerType)
     message = graphene.String()
 
     @staticmethod
-    def mutate(root, info, input: CreateCustomerInput):
+    def mutate(root, info, input: CustomerInput):
         name = (input.name or "").strip()
         email = (input.email or "").strip().lower()
         phone = (input.phone or "").strip() if input.phone else None
 
         # validations
         try:
-            if not name:
-                raise ValidationError("Name is required.")
             validate_email(email)
             validate_phone(phone)
         except ValidationError as e:
@@ -117,6 +115,7 @@ class BulkCreateCustomers(graphene.Mutation):
         errors = []
         emails_seen = set()
 
+        # validate
         for idx, item in enumerate(input):
             name = (item.name or "").strip()
             email = (item.email or "").strip().lower()
@@ -147,12 +146,12 @@ class BulkCreateCustomers(graphene.Mutation):
 
 class CreateProduct(graphene.Mutation):
     class Arguments:
-        input = CreateProductInput(required=True)
+        input = ProductInput(required=True)
 
     product = graphene.Field(ProductType)
 
     @staticmethod
-    def mutate(root, info, input: CreateProductInput):
+    def mutate(root, info, input: ProductInput):
         name = (input.name or "").strip()
         if not name:
             raise graphene.GraphQLError("Product name is required.")
@@ -171,19 +170,17 @@ class CreateProduct(graphene.Mutation):
 
 class CreateOrder(graphene.Mutation):
     class Arguments:
-        input = CreateOrderInput(required=True)
+        input = OrderInput(required=True)
 
     order = graphene.Field(OrderType)
 
     @staticmethod
-    def mutate(root, info, input: CreateOrderInput):
-        # Validate customer
+    def mutate(root, info, input: OrderInput):
         try:
             customer = Customer.objects.get(pk=input.customer_id)
         except Customer.DoesNotExist:
             raise graphene.GraphQLError("Invalid customer ID.")
 
-        # Validate products
         if not input.product_ids:
             raise graphene.GraphQLError("Select at least one product.")
 
@@ -208,19 +205,12 @@ class CreateOrder(graphene.Mutation):
 
 
 # -------------------
-# Query (with filtering & ordering)
+# Queries (Advanced Filtering + Ordering)
 # -------------------
 class Query(graphene.ObjectType):
-    hello = graphene.String(default_value="Hello, GraphQL!")
-    all_customers = DjangoFilterConnectionField(
-        CustomerType, filterset_class=CustomerFilter, order_by=graphene.List(of_type=graphene.String)
-    )
-    all_products = DjangoFilterConnectionField(
-        ProductType, filterset_class=ProductFilter, order_by=graphene.List(of_type=graphene.String)
-    )
-    all_orders = DjangoFilterConnectionField(
-        OrderType, filterset_class=OrderFilter, order_by=graphene.List(of_type=graphene.String)
-    )
+    all_customers = DjangoFilterConnectionField(CustomerType, filterset_class=CustomerFilter, order_by=graphene.List(of_type=graphene.String))
+    all_products = DjangoFilterConnectionField(ProductType, filterset_class=ProductFilter, order_by=graphene.List(of_type=graphene.String))
+    all_orders = DjangoFilterConnectionField(OrderType, filterset_class=OrderFilter, order_by=graphene.List(of_type=graphene.String))
 
     def resolve_all_customers(self, info, order_by=None, **kwargs):
         qs = Customer.objects.all()
@@ -235,7 +225,7 @@ class Query(graphene.ObjectType):
         return qs
 
     def resolve_all_orders(self, info, order_by=None, **kwargs):
-        qs = Order.objects.all()
+        qs = Order.objects.select_related("customer").prefetch_related("products")
         if order_by:
             qs = qs.order_by(*order_by)
         return qs
