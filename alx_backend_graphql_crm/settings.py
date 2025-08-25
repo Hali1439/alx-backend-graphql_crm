@@ -43,11 +43,15 @@ INSTALLED_APPS = [
     # Your app
     'crm',
     'django_filters',
+    "django_cron",
 ]
 
 GRAPHENE = {
     "SCHEMA": "alx_backend_graphql_crm.schema.schema"
 }
+
+CRON_CLASSES = ["myapp.cron.CleanStaleCron"]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
