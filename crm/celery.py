@@ -1,5 +1,6 @@
 import os
 from celery import Celery
+from datetime import datetime
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "alx_backend_graphql_crm.settings")
 

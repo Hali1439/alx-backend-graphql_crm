@@ -1,10 +1,24 @@
-# CRM Celery Report Setup
+# CRM Task Scheduling Setup
 
-## Requirements
-- Redis installed and running on `localhost:6379`
-- Python dependencies from `requirements.txt`
+This guide explains how to set up **Celery** and **Celery Beat** for generating weekly CRM reports, along with required dependencies.
 
-## Setup Steps
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
+---
+
+## 1. Install Dependencies
+
+Install Redis and required Python packages:
+
+```bash
+# Install Redis (Ubuntu/Debian)
+sudo apt-get update
+sudo apt-get install redis-server
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+✔ Install Redis & dependencies  
+✔ Run migrations  
+✔ Start Redis  
+✔ Start Celery worker  
+✔ Start Celery Beat  
+✔ Verify logs
