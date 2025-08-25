@@ -6,9 +6,11 @@ related to customer relationship management functionality.
 """
 
 import re
+import graphene
+
+from .models import Product
 from datetime import datetime
 from decimal import Decimal
-import graphene
 from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -534,3 +536,29 @@ class Mutation(graphene.ObjectType):
 
 # Create the schema
 schema = graphene.Schema(query=Query, mutation=Mutation)
+
+class UpdateLowStockProducts(graphene.Mutation):
+    class Arguments:
+        pass
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    updated_products = graphene.List(graphene.String)
+
+    def mutate(self, info):
+        low_stock_products = Product.objects.filter(stock__lt=10)
+        updated_names = []
+
+        for product in low_stock_products:
+            product.stock += 10  # simulate restock
+            product.save()
+            updated_names.append(f"{product.name}: {product.stock}")
+
+        return UpdateLowStockProducts(
+            success=True,
+            message=f"Updated {len(updated_names)} products",
+            updated_products=updated_names
+        )
+
+class Mutation(graphene.ObjectType):
+    update_low_stock_products = UpdateLowStockProducts.Field()
