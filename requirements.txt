@@ -1,1 +1,10 @@
+Django>=5.2.4
+graphene-django
+django-filter
 django-crontab
+django-cron
+requests
+gql
+celery
+django-celery-beat
+redis
