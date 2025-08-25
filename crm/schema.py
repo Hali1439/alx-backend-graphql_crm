@@ -9,6 +9,7 @@ import re
 import graphene
 
 from .models import Product
+from crm.models import Product
 from datetime import datetime
 from decimal import Decimal
 from django.db import transaction
