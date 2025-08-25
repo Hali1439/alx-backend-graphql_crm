@@ -50,7 +50,9 @@ GRAPHENE = {
     "SCHEMA": "alx_backend_graphql_crm.schema.schema"
 }
 
-CRON_CLASSES = ["myapp.cron.CleanStaleCron"]
+CRON_CLASSES = ["myapp.cron.CleanStaleCron"
+                    ("*/5 * * * *", "crm.cron.log_crm_heartbeat"),
+]
 
 
 MIDDLEWARE = [
